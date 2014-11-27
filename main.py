@@ -66,24 +66,31 @@ def sockconnect(sock, host):
 def connect(host, email):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if not sockconnect(sock, host):
-        return None
-    if not sock.recv(1024)[:3] == '220':
-        return None
-    sock.send('HELO\r\n')
-    if not sock.recv(1024)[:3] == '250':
-        return None
+        raise Exception('Connection Error')
+    output = sock.recv(1024).strip()
+    if output[:3] != '220':
+        raise Exception('HS: {0}'.format(output))
+    sock.send('HELO FQDN\r\n')
+    output = sock.recv(1024).strip()
+    if output[:3] not in ('250', '220'):
+        raise Exception('HELO: {0}'.format(output))
+    sock.send('MAIL FROM: <mail@mail.com>\r\n')
+    output = sock.recv(1024).strip()
+    if output[:3] != '250':
+        raise Exception('MAIL FROM: {0}'.format(output))
     sock.send('RCPT TO: <{0}>\r\n'.format(email))
-    if not sock.recv(1024)[:3] == '250':
-        return None
+    output = sock.recv(1024).strip()
+    if output[:3] != '250':
+        raise Exception('RCPT TO: {0}'.format(output))
     sock.close()
     return True
 
 @debug
 def checkemailhost(host, email):
     try:
-        return connect(host, email).rcpt(email)
-    except AttributeError:
-        return None
+        return connect(host, email), ""
+    except Exception as exception:
+        return None, str(exception)
 
 @debug
 def checkemail(email):
@@ -96,8 +103,8 @@ def main(input_path, output_path):
         output.writerow(['email', 'valid'])
 
         for email in getemailsfromfile(input_path):
-            valid = checkemail(email)
-            output.writerow([email, bool(valid)])
+            valid, error = checkemail(email)
+            output.writerow([email, bool(valid), error])
             output_file.flush()
 
 if __name__ == '__main__':
