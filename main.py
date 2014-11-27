@@ -68,7 +68,7 @@ def connect(host, email):
     sock.send('HELO\r\n')
     if not sock.recv(1024)[:3] == '250':
         return None
-    sock.send('RCPT TO: <{0}>\r\n', email)
+    sock.send('RCPT TO: <{0}>\r\n'.format(email))
     if not sock.recv(1024)[:3] == '250':
         return None
     sock.close()
