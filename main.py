@@ -1,6 +1,7 @@
 import dns.resolver
 import socket
 import sys
+import csv
 
 
 def memoize(func):
@@ -47,6 +48,9 @@ def getmxserversfromhost(host):
     except dns.resolver.NoNameservers:
         # We might still want to try to return host
         return []
+    except:
+        # Catch-all
+        return []
 
 @debug
 def sockconnect(sock, host):
@@ -56,7 +60,7 @@ def sockconnect(sock, host):
             sock.connect((host, port))
             return sock
         except socket.error:
-            continue
+            pass
 
 @debug
 def connect(host, email):
@@ -75,17 +79,26 @@ def connect(host, email):
     return True
 
 @debug
-def checkemail(host, email):
+def checkemailhost(host, email):
     try:
         return connect(host, email).rcpt(email)
     except AttributeError:
         return None
 
-def main(path):
-    for email in getemailsfromfile(path):
-        for host in getmxserversfromhost(gethostfromemail(email)):
-            if checkemail(host.exchange.to_text(), email):
-                break
+@debug
+def checkemail(email):
+    for host in getmxserversfromhost(gethostfromemail(email)):
+        return checkemailhost(host.exchange.to_text(), email)
+
+def main(input_path, output_path):
+    with open(output_path, 'wb') as output_file:
+        output = csv.writer(output_file, dialect=csv.excel)
+        output.writerow(['email', 'valid'])
+
+        for email in getemailsfromfile(input_path):
+            valid = checkemail(email)
+            output.writerow([email, bool(valid)])
+            output_file.flush()
 
 if __name__ == '__main__':
-    main(path=sys.argv[1])
+    main(input_path=sys.argv[1], output_path=sys.argv[2])
