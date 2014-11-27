@@ -2,6 +2,7 @@ import dns.resolver
 import socket
 import sys
 import csv
+import io
 
 
 class ConnectionError(Exception): pass
@@ -9,12 +10,18 @@ class ParsingError(Exception): pass
 class SMTPError(Exception): pass
 
 
+def hash_parameters(args, kwargs):
+    return hash(args) + hash(frozenset(kwargs.items()))
+
+
 def memoize(func):
     memo = {}
-    def helper(x, *args, **kwargs):
-        if x not in memo:
-            memo[x] = func(x, *args, **kwargs)
-        return memo[x]
+    def helper(*args, **kwargs):
+        key = hash_parameters(args, kwargs)
+        if key not in memo:
+            memo[key] = func(*args, **kwargs)
+        return memo[key]
+    helper.memo = memo
     return helper
 
 def debug(func):
@@ -27,7 +34,7 @@ def debug(func):
     return wrapper
 
 def getemailsfromfile(path):
-    return [x.strip() for x in open(path).readlines()
+    return [x.strip() for x in io.open(path, 'rb').readlines()
         if x.strip()]
 
 @debug
@@ -95,16 +102,14 @@ def checkemail(email):
     for host in getmxserversfromhost(gethostfromemail(email)):
         try:
             return connect(host.exchange.to_text(), email), ''
-        except ConnectionError:
+        except Exception:
             continue
-        except Exception as exception:
-            return None, str(exception)
     return None, "No email servers found"
 
 def main(input_path, output_path):
-    with open(output_path, 'wb') as output_file:
+    with io.open(output_path, 'wb') as output_file:
         output = csv.writer(output_file, dialect=csv.excel)
-        output.writerow(['email', 'valid'])
+        output.writerow(['email', 'valid', 'error'])
 
         for email in getemailsfromfile(input_path):
             valid, error = checkemail(email)
