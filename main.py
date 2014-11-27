@@ -4,6 +4,11 @@ import sys
 import csv
 
 
+class ConnectionError(Exception): pass
+class ParsingError(Exception): pass
+class SMTPError(Exception): pass
+
+
 def memoize(func):
     memo = {}
     def helper(x, *args, **kwargs):
@@ -66,36 +71,35 @@ def sockconnect(sock, host):
 def connect(host, email):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if not sockconnect(sock, host):
-        raise Exception('Connection Error')
+        raise ConnectionError('Connection Error')
     output = sock.recv(1024).strip()
     if output[:3] != '220':
-        raise Exception('HS: {0}'.format(output))
+        raise SMTPError('HS: {0}'.format(output))
     sock.send('HELO FQDN\r\n')
     output = sock.recv(1024).strip()
     if output[:3] not in ('250', '220'):
-        raise Exception('HELO: {0}'.format(output))
+        raise SMTPError('HELO: {0}'.format(output))
     sock.send('MAIL FROM: <mail@mail.com>\r\n')
     output = sock.recv(1024).strip()
     if output[:3] != '250':
-        raise Exception('MAIL FROM: {0}'.format(output))
+        raise SMTPError('MAIL FROM: {0}'.format(output))
     sock.send('RCPT TO: <{0}>\r\n'.format(email))
     output = sock.recv(1024).strip()
     if output[:3] != '250':
-        raise Exception('RCPT TO: {0}'.format(output))
+        raise SMTPError('RCPT TO: {0}'.format(output))
     sock.close()
     return True
 
 @debug
-def checkemailhost(host, email):
-    try:
-        return connect(host, email), ""
-    except Exception as exception:
-        return None, str(exception)
-
-@debug
 def checkemail(email):
     for host in getmxserversfromhost(gethostfromemail(email)):
-        return checkemailhost(host.exchange.to_text(), email)
+        try:
+            return connect(host.exchange.to_text(), email), ''
+        except ConnectionError:
+            continue
+        except Exception as exception:
+            return None, str(exception)
+    return None, "No email servers found"
 
 def main(input_path, output_path):
     with open(output_path, 'wb') as output_file:
