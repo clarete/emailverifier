@@ -86,11 +86,11 @@ def connect(host, email):
     output = sock.recv(1024).strip()
     if output[:3] not in ('250', '220'):
         raise SMTPError('HELO: {0}'.format(output))
-    sock.send('MAIL FROM: <mail@mail.com>\r\n')
+    sock.send('MAIL FROM:<mail@mail.com>\r\n')
     output = sock.recv(1024).strip()
     if output[:3] != '250':
         raise SMTPError('MAIL FROM: {0}'.format(output))
-    sock.send('RCPT TO: <{0}>\r\n'.format(email))
+    sock.send('RCPT TO:<{0}>\r\n'.format(email))
     output = sock.recv(1024).strip()
     if output[:3] != '250':
         raise SMTPError('RCPT TO: {0}'.format(output))
