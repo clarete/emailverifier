@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/clarete/emailverifier.svg?branch=master)](https://travis-ci.org/clarete/emailverifier)
+
 # Email verifier
 
 This small software verifies a list of email addresses. Here's how you
